@@ -23,8 +23,7 @@ from util import nearestPoint
 # Team creation #
 #################
 
-def createTeam(firstIndex, secondIndex, isRed,
-               first = 'OffensiveAgent', second = 'DefensiveAgent'):
+def createTeam(firstIndex, secondIndex, isRed, first = 'OffensiveAgent', second = 'DefensiveAgent'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -47,56 +46,9 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-class DummyAgent(CaptureAgent):
-  """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
-  """
-
-  def registerInitialState(self, gameState):
-    """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
-
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
-
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
-
-    '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
-    CaptureAgent.registerInitialState(self, gameState)
-
-    '''
-    Your initialization code goes here, if you need any.
-    '''
-
-
-  def chooseAction(self, gameState):
-    """
-    Picks among actions randomly.
-    """
-    actions = gameState.getLegalActions(self.index)
-
-    '''
-    You should change this in your own agent.
-    '''
-
-    return random.choice(actions)
-
-
 class OffensiveAgent(CaptureAgent):
     
     def __init__(self, index):
-        
         self.observationHistory = []
         self.numEnemyFood = "+inf"
         self.idealTime = 0
@@ -111,41 +63,39 @@ class OffensiveAgent(CaptureAgent):
 
         currentEnemyFood = len(self.getFood(gameState).asList())
         if self.numEnemyFood != currentEnemyFood:
-          self.numEnemyFood = currentEnemyFood
-          self.idealTime = 0
+            self.numEnemyFood = currentEnemyFood
+            self.idealTime = 0
         else:
-          self.idealTime += 1
-          
+            self.idealTime += 1
         if gameState.getInitialAgentPosition(self.index) == gameState.getAgentState(self.index).getPosition():
-          self.idealTime = 0
+            self.idealTime = 0
 
         actions = gameState.getLegalActions(self.index)
         if 'Stop' in actions: actions.remove(Directions.STOP)
         takeActions = []
         for a in actions:
-          if not self.findCorridor(gameState, a, 5):
-            takeActions.append(a)
+            if not self.findCorridor(gameState, a, 5):
+                takeActions.append(a)
         if len(takeActions) == 0:
-          takeActions = actions
+            takeActions = actions
     
         values = []
         for a in takeActions:
-          new_state = gameState.generateSuccessor(self.index, a)
-          temp = 0
-          for i in range(1,31):
-            temp += self.simulate(10, new_state)
-          values.append(temp)
+            new_state = gameState.generateSuccessor(self.index, a)
+            temp = 0
+            for i in range(1,31):
+                temp += self.simulate(10, new_state)
+            values.append(temp)
     
         bestValue = max(values)
         ties = filter(lambda x: x[0] == bestValue, zip(values, takeActions))
         toPlay = random.choice(ties)[1]
     
         return toPlay        
+    
     def evaluate(self,gameState, action):
-        
         features = self.getFeatures(gameState, action)
         reward = self.getReward(gameState, action)
-        
         return features * reward
     
     def getFeatures(self, gameState , action):
@@ -153,10 +103,8 @@ class OffensiveAgent(CaptureAgent):
         features = util.Counter()
         successor = self.getSuccessor(gameState, action)
         features['successorScore'] = self.getScore(successor)
-        
         foodList = self.getFood(successor).asList()
         currPos = successor.getAgentState(self.index).getPosition()
-        
         if len(foodList) > 0:
             minDis = min([self.getMazeDistance(currPos, food) for food in foodList])
             features['distanceToFood'] = minDis
@@ -176,8 +124,7 @@ class OffensiveAgent(CaptureAgent):
             features['isPacman'] = 1 
         else:
             features['isPacman'] = 0
-            
-        
+
         return features
     
     
@@ -210,20 +157,21 @@ class OffensiveAgent(CaptureAgent):
         """
         new_state = gameState.deepCopy()
         while depth > 0:
-          # Get valid actions
-          actions = new_state.getLegalActions(self.index)
-          # The agent should not stay put in the simulation
-          actions.remove(Directions.STOP)
-          current_direction = new_state.getAgentState(self.index).configuration.direction
-          # The agent should not use the reverse direction during simulation
-          reversed_direction = Directions.REVERSE[new_state.getAgentState(self.index).configuration.direction]
-          if reversed_direction in actions and len(actions) > 1:
-            actions.remove(reversed_direction)
-          # Randomly chooses a valid action
-          a = random.choice(actions)
-          # Compute new state and update depth
-          new_state = new_state.generateSuccessor(self.index, a)
-          depth -= 1
+            # Get valid actions
+            actions = new_state.getLegalActions(self.index)
+            # The agent should not stay put in the simulation
+            actions.remove(Directions.STOP)
+            current_direction = new_state.getAgentState(self.index).configuration.direction
+            # The agent should not use the reverse direction during simulation
+            reversed_direction = Directions.REVERSE[new_state.getAgentState(self.index).configuration.direction]
+            if reversed_direction in actions and len(actions) > 1:
+                actions.remove(reversed_direction)
+            # Randomly chooses a valid action
+            a = random.choice(actions)
+            # Compute new state and update depth
+            new_state = new_state.generateSuccessor(self.index, a)
+            depth -= 1
+        
         # Evaluate the final simulation state
         return self.evaluate(new_state, Directions.STOP)
             
@@ -246,13 +194,13 @@ class OffensiveAgent(CaptureAgent):
         if Directions.REVERSE[nextState.getAgentState(self.index).configuration.direction] in actions:
             actions.remove(Directions.REVERSE[nextState.getAgentState(self.index).configuration.direction])
             
-        if len(actions) == 0:
-            
+        if len(actions) == 0:    
             return False
         
         for action in actions:
             if not self.findCorridor(nextState, action, depth -1):
                 return False
+
         print (actions)
         return True
     
@@ -321,8 +269,7 @@ class DefensiveAgent(CaptureAgent):
         
         for area in self.areaToDefend.keys():
             self.areaToDefend[area] = float(self.areaToDefend[area]/float(score))
-            
-          
+
     def chooseAction(self, gameState):
         
         if self.prevOberservedFood and len(self.prevOberservedFood) != len(self.getFoodYouAreDefending(gameState).asList()):
@@ -358,11 +305,11 @@ class DefensiveAgent(CaptureAgent):
         optimalActions = []
         values = []
         for action in actions:
-          new_state = gameState.generateSuccessor(self.index, action)
-          if not new_state.getAgentState(self.index).isPacman and not action == Directions.STOP:
-            newpos = new_state.getAgentPosition(self.index)
-            optimalActions.append(action)
-            values.append(self.getMazeDistance(newpos, self.target))
+            new_state = gameState.generateSuccessor(self.index, action)
+            if not new_state.getAgentState(self.index).isPacman and not action == Directions.STOP:
+                newpos = new_state.getAgentPosition(self.index)
+                optimalActions.append(action)
+                values.append(self.getMazeDistance(newpos, self.target))
     
         # Randomly chooses between ties.
         optimalValue = min(values)
@@ -387,7 +334,6 @@ class DefensiveAgent(CaptureAgent):
         successor = gameState.generateSuccessor(self.index, action)
         pos = successor.getAgentState(self.index).getPosition()
         if pos != nearestPoint(pos):
-          return successor.generateSuccessor(self.index, action)
+            return successor.generateSuccessor(self.index, action)
         else:
-          return successor
-
+            return successor
