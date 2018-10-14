@@ -188,7 +188,7 @@ class AttackerPDDL(CaptureAgent):
     food = self.getFood(gameState).asList()
 
     # No food, so run home
-    if len(food) == 0 or state.numCarrying >= self.carryThreshold:
+    if len(food) <= 2 or state.numCarrying >= self.carryThreshold:
       pos = self.findClosestHomePosition(gameState,state)
       
       goals = goals + "\t\t(At p_" + str(pos[0]) + "_" + str(pos[1]) + ")\n"      
@@ -236,7 +236,7 @@ class AttackerPDDL(CaptureAgent):
     req = urllib2.Request('http://solver.planning.domains/solve')
     req.add_header('Content-Type', 'application/json')
     resp = json.loads(urllib2.urlopen(req, json.dumps(data)).read())
-    print '\n239\n', resp, '\n\n'
+    #print '\n239\n', resp, '\n\n'
     plan = [act['name'] for act in resp['result']['plan']]
     # Find the first MOVE action
     for s in plan:
@@ -357,6 +357,9 @@ class DefenderPDDL(CaptureAgent):
     '''
     Your initialization code goes here, if you need any.
     '''
+    self.availablePos = gameState.getWalls().asList(False)
+    self.center = self.availablePos[len(self.availablePos)/2]
+
     self.generatePDDLDomain()
 
   def createPDDLobjects(self, gameState):
@@ -411,22 +414,18 @@ class DefenderPDDL(CaptureAgent):
             fluents = fluents + "\t\t(Adjacent " + currPos + " " + "p_" + str(i) + "_" + str(j-1) + ")\n"    
 
     # This is a hunter type Agent, so we add the opponents to hunt on our side
-    if gameState.isOnRedTeam(self.index):
-      blue = gameState.getBlueTeamIndices()
-      enemies = list()
-      enemies.append(gameState.getAgentPosition(blue[0]))
-      enemies.append(gameState.getAgentPosition(blue[1]))
-      states = list()
-      states.append(gameState.getAgentState(blue[0]).isPacman)
-      states.append(gameState.getAgentState(blue[1]).isPacman)
-    else:
-      red = gameState.getRedTeamIndices()
-      enemies = list()
-      enemies.append(gameState.getAgentPosition(red[0]))
-      enemies.append(gameState.getAgentPosition(red[1]))
-      states = list()
-      states.append(gameState.getAgentState(red[0]).isPacman)
-      states.append(gameState.getAgentState(red[1]).isPacman)
+    
+    opponents = self.getOpponents(gameState)
+    enemies = list()
+    enemies.append(gameState.getAgentPosition(opponents[0]))
+    enemies.append(gameState.getAgentPosition(opponents[1]))
+    
+    states = list()
+    states.append(gameState.getAgentState(opponents[0]).isPacman)
+    states.append(gameState.getAgentState(opponents[1]).isPacman)
+    if (enemies[0] == None) & (enemies[1] == None):
+      enemies = [self.center]
+      states = [True]
 
     # For every observable enemy, if there is a Pacman, we hunt him down...
     for pos,state in zip(enemies,states):
@@ -439,26 +438,21 @@ class DefenderPDDL(CaptureAgent):
     goals = ""
 
     # This is a hunter type Agent, so its main objective is to kill Pacman
-    if gameState.isOnRedTeam(self.index):
-      blue = gameState.getBlueTeamIndices()
-      enemies = list()
-      enemies.append(gameState.getAgentPosition(blue[0]))
-      enemies.append(gameState.getAgentPosition(blue[1]))
-      states = list()
-      states.append(gameState.getAgentState(blue[0]).isPacman)
-      states.append(gameState.getAgentState(blue[1]).isPacman)
-    else:
-      red = gameState.getRedTeamIndices()
-      enemies = list()
-      enemies.append(gameState.getAgentPosition(red[0]))
-      enemies.append(gameState.getAgentPosition(red[1]))
-      states = list()
-      states.append(gameState.getAgentState(red[0]).isPacman)
-      states.append(gameState.getAgentState(red[1]).isPacman)
+    opponents = self.getOpponents(gameState)
+    enemies = list()
+    enemies.append(gameState.getAgentPosition(opponents[0]))
+    enemies.append(gameState.getAgentPosition(opponents[1]))
+    
+    states = list()
+    states.append(gameState.getAgentState(opponents[0]).isPacman)
+    states.append(gameState.getAgentState(opponents[1]).isPacman)
+    if (enemies[0] == None) and (enemies[1] == None):
+      enemies = [self.center]
+      states = [True]
       
     for pos,state in zip(enemies,states):
       if (not pos == None) and (state == True):
-        goals = goals + "\t\t(not (PacmanAt p_" + str(pos[0]) + "_" + str(pos[1]) + "))\n"
+        goals = goals + "\t\t( not (PacmanAt p_" + str(pos[0]) + "_" + str(pos[1]) + "))\n"
     
     return goals
 
@@ -493,7 +487,7 @@ class DefenderPDDL(CaptureAgent):
     req = urllib2.Request('http://solver.planning.domains/solve')
     req.add_header('Content-Type', 'application/json')
     resp = json.loads(urllib2.urlopen(req, json.dumps(data)).read())
-    print '\n496\n', resp, '\n\n'
+    #print '\n496\n', resp, '\n\n'
     plan = [act['name'] for act in resp['result']['plan']]
     
     # Find the first MOVE action

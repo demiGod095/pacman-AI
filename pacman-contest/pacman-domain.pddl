@@ -2,7 +2,7 @@
   (:requirements :typing)
   (:types pos)
   ;; Define the problem facts
-  ;; "?" denotes a variable\, "-" denotes a type
+  ;; "?" denotes a variable, "-" denotes a type
   (:predicates  (At ?p - pos)
                 (FoodAt ?p - pos)
                 (CapsuleAt ?p - pos)
