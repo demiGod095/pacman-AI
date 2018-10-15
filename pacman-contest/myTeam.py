@@ -48,6 +48,10 @@ def createTeam(firstIndex, secondIndex, isRed, first = 'OffensiveAgent', second 
 
 class OffensiveAgent(CaptureAgent):
     
+    """
+    This agent will go to the enemy's area to and eat a pacdot and returns back.
+    
+    """
     def __init__(self, index):
         self.observationHistory = []
         self.numEnemyFood = "+inf"
@@ -61,6 +65,15 @@ class OffensiveAgent(CaptureAgent):
 
     def chooseAction(self, gameState):
 
+        """
+        Technique used is MonteCarloTreeSearch.
+        AI is designed to calculate probability of selecting the best path by simulating 
+        many games from every node randomly and decide the best path
+        
+        """
+
+        #It will take a note of how much food is left and update it 
+
         currentEnemyFood = len(self.getFood(gameState).asList())
         if self.numEnemyFood != currentEnemyFood:
             self.numEnemyFood = currentEnemyFood
@@ -70,7 +83,9 @@ class OffensiveAgent(CaptureAgent):
         if gameState.getInitialAgentPosition(self.index) == gameState.getAgentState(self.index).getPosition():
             self.idealTime = 0
 
+        #list will contain all legals actions from current game state
         actions = gameState.getLegalActions(self.index)
+        #to reduce computation 'Stop' actions will be removed
         if 'Stop' in actions: actions.remove(Directions.STOP)
         takeActions = []
         for a in actions:
@@ -80,12 +95,19 @@ class OffensiveAgent(CaptureAgent):
             takeActions = actions
     
         values = []
+
+        #takeAction will hold all the actions that will take the pacman to the corridor 
+        #where there are no ghosts
         for a in takeActions:
             new_state = gameState.generateSuccessor(self.index, a)
             temp = 0
             for i in range(1,31):
                 temp += self.simulate(10, new_state)
             values.append(temp)
+
+
+        #for that corridor the game is simulated 30 times with a depth of 10 and score value 
+        #is stored out of which maximum value is selected
     
         bestValue = max(values)
         ties = filter(lambda x: x[0] == bestValue, zip(values, takeActions))
@@ -94,19 +116,32 @@ class OffensiveAgent(CaptureAgent):
         return toPlay        
     
     def evaluate(self,gameState, action):
+
+        """
+        This function will evaluate score on the basis of features and reward
+        
+        """
         features = self.getFeatures(gameState, action)
         reward = self.getReward(gameState, action)
         return features * reward
     
     def getFeatures(self, gameState , action):
+
+        """
+        This function will select what all features will be used to evaluate the reward
+        
+        """
         
         features = util.Counter()
         successor = self.getSuccessor(gameState, action)
+        #successorScore feature will be used --1
         features['successorScore'] = self.getScore(successor)
         foodList = self.getFood(successor).asList()
         currPos = successor.getAgentState(self.index).getPosition()
         if len(foodList) > 0:
             minDis = min([self.getMazeDistance(currPos, food) for food in foodList])
+
+            #distanceToFood feature will be used --2
             features['distanceToFood'] = minDis
         
         enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
@@ -117,8 +152,12 @@ class OffensiveAgent(CaptureAgent):
             neighbour = min(moves, key = lambda agent: self.getMazeDistance(currPos, agent))
             enemyDis = self.getMazeDistance(currPos, neighbour)
             if enemyDis <= 5:
+
+                #distanceToGhost feature will be used --3
                 features['distanceToGhost'] = enemyDis
 
+
+        #isPacman feature will be used --4
         
         if successor.getAgentState(self.index).isPacman:
             features['isPacman'] = 1 
@@ -129,6 +168,12 @@ class OffensiveAgent(CaptureAgent):
     
     
     def getReward(self, gameState, action):
+
+        """
+        This function will evaluate the reward for every action on the basis of weights.
+        These weights are learned by the pacman and then the best action is selected.
+        
+        """
         
         if self.idealTime > 80:
             return {'successorScore': 200, 'distanceToFood': -5, 'distanceToGhost': 2, 'isPacman': 1000}
@@ -151,32 +196,38 @@ class OffensiveAgent(CaptureAgent):
         
     def simulate(self, depth, gameState):
         """
-        Random simulate some actions for the agent. The actions other agents can take
-        are ignored, or, in other words, we consider their actions is always STOP.
-        The final state from the simulation is evaluated.
+        Randomly stimulates actions for the the agent at every node
         """
+        
+        
+        #next state will be found from the deepCopy function which have the next available states of the current game
         new_state = gameState.deepCopy()
         while depth > 0:
             # Get valid actions
             actions = new_state.getLegalActions(self.index)
-            # The agent should not stay put in the simulation
+            
             actions.remove(Directions.STOP)
             current_direction = new_state.getAgentState(self.index).configuration.direction
-            # The agent should not use the reverse direction during simulation
+            
             reversed_direction = Directions.REVERSE[new_state.getAgentState(self.index).configuration.direction]
             if reversed_direction in actions and len(actions) > 1:
                 actions.remove(reversed_direction)
-            # Randomly chooses a valid action
+
             a = random.choice(actions)
-            # Compute new state and update depth
+
             new_state = new_state.generateSuccessor(self.index, a)
             depth -= 1
         
-        # Evaluate the final simulation state
+        #reward sent back will be learned by the algorithm on the basis which the final action will be decided
         return self.evaluate(new_state, Directions.STOP)
             
     def findCorridor(self, gameState, action, depth):
         
+
+        """
+        This function will find a path (corridor) with no ghost and maximum reward
+        and returns boolean value if it find the path required.
+        """
         if depth == 0:
             return False
         
@@ -206,6 +257,10 @@ class OffensiveAgent(CaptureAgent):
     
     def getSuccessor(self,gameState,action):
         
+        """
+        This function will get the next state from the current state
+        
+        """
         successor = gameState.generateSuccessor(self.index, action)
         position = successor.getAgentState(self.index).getPosition()
         
@@ -219,6 +274,11 @@ class OffensiveAgent(CaptureAgent):
 
 class DefensiveAgent(CaptureAgent):
     
+
+    """
+    This agent will go the center of the grid to protect the pacdots and will never be offensive
+    
+    """
     def __init__(self, index):      
         self.index = index
         self.target = None
@@ -248,6 +308,15 @@ class DefensiveAgent(CaptureAgent):
         self.foodToProtect(gameState)
 
     def foodToProtect(self, gameState):
+
+
+        """
+        This function tell the defending agent which part of pacdots are to be protected
+        1. In the center if there are many pacdots available 
+        2. If there are only less than equal to 1/4th pacdots the agent will only be protecting them only
+        
+        """
+
         foodList = self.getFoodYouAreDefending(gameState).asList()
         score = 0
         
@@ -272,6 +341,7 @@ class DefensiveAgent(CaptureAgent):
 
     def chooseAction(self, gameState):
         
+        #will store the current position of the agent
         if self.prevOberservedFood and len(self.prevOberservedFood) != len(self.getFoodYouAreDefending(gameState).asList()):
             self.foodToProtect(gameState)
             
@@ -279,6 +349,7 @@ class DefensiveAgent(CaptureAgent):
         if currPos == self.target:
             self.target = None
             
+        #code snippet to find get the enemy info  
         agent = self.getOpponents(gameState)
         enemies  = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
         invaders = filter(lambda agent: agent.isPacman and agent.getPosition() != None, enemies)
@@ -292,6 +363,7 @@ class DefensiveAgent(CaptureAgent):
             if len(food) > 0:
                 self.target = food.pop()
                 
+        #will store info of preserved food and area to be defended   
         self.prevOberservedFood = self.getFoodYouAreDefending(gameState).asList()
         
         if self.target == None and len(self.getFoodYouAreDefending(gameState).asList()) <= 4:
@@ -303,6 +375,10 @@ class DefensiveAgent(CaptureAgent):
             
         actions = gameState.getLegalActions(self.index)
         optimalActions = []
+
+        #for every legal action reward will be calculated and the value will be learnt and be used later
+        #to judge the best action
+
         values = []
         for action in actions:
             new_state = gameState.generateSuccessor(self.index, action)
@@ -320,6 +396,8 @@ class DefensiveAgent(CaptureAgent):
             
        
     def goToTargetArea(self):
+
+        #This function will return random value for the particular area
         sum = 0.0
         randomValue = random.random()
         for x in self.areaToDefend.keys():
@@ -328,9 +406,7 @@ class DefensiveAgent(CaptureAgent):
                 return x
              
     def getSuccessor(self, gameState, action):
-        """
-        Finds the next successor which is a grid position (location tuple).
-        """
+        #this function is similar as in the offensive agent
         successor = gameState.generateSuccessor(self.index, action)
         pos = successor.getAgentState(self.index).getPosition()
         if pos != nearestPoint(pos):
